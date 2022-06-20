@@ -1,172 +1,381 @@
-import React, { Component } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { withStyles } from '@material-ui/core/styles';
-import CssBaseline from "@material-ui/core/CssBaseline";
-import { MuiThemeProvider, createTheme } from "@material-ui/core/styles";
-import Grid from "@material-ui/core/Grid";
-import Typography from "@material-ui/core/Typography";
-import Paper from "@material-ui/core/Paper";
+import * as Mui from '@material-ui/core';
 
+const serverURL = "http://ov-research-4.uwaterloo.ca:3010"; //enable for deployed mode; Change PORT to the port number given to you;
 
-//Dev mode
-const serverURL = ""; //enable for dev mode
-
-//Deployment mode instructions
-//const serverURL = "http://ov-research-4.uwaterloo.ca:PORT"; //enable for deployed mode; Change PORT to the port number given to you;
-//To find your port number: 
-//ssh to ov-research-4.uwaterloo.ca and run the following command: 
-//env | grep "PORT"
-//copy the number only and paste it in the serverURL in place of PORT, e.g.: const serverURL = "http://ov-research-4.uwaterloo.ca:3000";
 
 const fetch = require("node-fetch");
 
-const opacityValue = 0.9;
 
-const theme = createTheme({
-  palette: {
-    type: 'dark',
-    background: {
-      default: "#000000"
-    },
-    primary: {
-      main: "#52f1ff",
-    },
-    secondary: {
-      main: "#b552f7",
-    },
-  },
-});
+const movies = [
+  "cars 2",
+  "cars 3",
+  "skrt skrt",
+  "mmmm armpit",
+  "epic movie wow !"
+]
 
-const styles = theme => ({
-  root: {
-    body: {
-      backgroundColor: "#000000",
-      opacity: opacityValue,
-      overflow: "hidden",
-    },
-  },
-  mainMessage: {
-    opacity: opacityValue,
-  },
+export default function Home() {
+  const [reviews, setReviews] = useState([])
 
-  mainMessageContainer: {
-    marginTop: "20vh",
-    marginLeft: theme.spacing(20),
-    [theme.breakpoints.down('xs')]: {
-      marginLeft: theme.spacing(4),
-    },
-  },
-  paper: {
-    overflow: "hidden",
-  },
-  message: {
-    opacity: opacityValue,
-    maxWidth: 250,
-    paddingBottom: theme.spacing(2),
-  },
-
-});
-
-
-class Home extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      userID: 1,
-      mode: 0
-    }
-  };
-
-  componentDidMount() {
-    //this.loadUserSettings();
+  function addReview(review){
+    setReviews([review, ...reviews]);
   }
 
+  return (
+    <Mui.Grid
+      container
+      direction="column"
+      justifyContent="center"
+      alignItems="center"
+    >
 
-  loadUserSettings() {
-    this.callApiLoadUserSettings()
-      .then(res => {
-        //console.log("loadUserSettings returned: ", res)
-        var parsed = JSON.parse(res.express);
-        console.log("loadUserSettings parsed: ", parsed[0].mode)
-        this.setState({ mode: parsed[0].mode });
-      });
-  }
-
-  callApiLoadUserSettings = async () => {
-    const url = serverURL + "/api/loadUserSettings";
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        //authorization: `Bearer ${this.state.token}`
-      },
-      body: JSON.stringify({
-        userID: this.state.userID
-      })
-    });
-    const body = await response.json();
-    if (response.status !== 200) throw Error(body.message);
-    console.log("User settings: ", body);
-    return body;
-  }
-
-  render() {
-    const { classes } = this.props;
-
-
-
-    const mainMessage = (
-      <Grid
-        container
-        spacing={0}
-        direction="column"
-        justify="flex-start"
-        alignItems="flex-start"
-        style={{ minHeight: '100vh' }}
-        className={classes.mainMessageContainer}
+      <Mui.Typography
+        variant="h3"
       >
-        <Grid item>
+        Eric's Ebic Movie Reviews
+      </Mui.Typography>
 
-          <Typography
-            variant={"h3"}
-            className={classes.mainMessage}
-            align="flex-start"
-          >
-            {this.state.mode === 0 ? (
-              <React.Fragment>
-                Welcome to MSci245!
-              </React.Fragment>
-            ) : (
-              <React.Fragment>
-                Welcome back!
-              </React.Fragment>
-            )}
-          </Typography>
+      <Review
+        addReview={addReview}
+      >
+      </Review>
 
-        </Grid>
-      </Grid>
-    )
-
-
-    return (
-      <MuiThemeProvider theme={theme}>
-        <div className={classes.root}>
-          <CssBaseline />
-          <Paper
-            className={classes.paper}
-          >
-            {mainMessage}
-          </Paper>
-
-        </div>
-      </MuiThemeProvider>
-    );
-  }
+      {
+        reviews.length !== 0
+        &&
+        <ReviewDisplayContainer reviews={reviews}>
+        </ReviewDisplayContainer>
+      }
+  
+    </Mui.Grid>
+  )
 }
+
 
 Home.propTypes = {
   classes: PropTypes.object.isRequired
 };
 
-export default withStyles(styles)(Home);
+const Review = ({addReview}) => {
+  const [selectedMovie, setSelectedMovie] = useState(movies[0]);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const [movieRating, setMovieRating] = useState(0);
+
+  const [validTitle, setValidTitle] = useState(false);
+  const [validBody, setValidBody] = useState(false);
+  const [validRating, setValidRating] = useState(false);
+
+  const [displaySuccess, setDisplaySuccess] = useState(false);
+  const [checkedFormValidity, setCheckedFormValidity] = useState(false);
+
+  function handleSelectMovieChange(event){
+    setSelectedMovie(event.target.value);
+    setDisplaySuccess(false)
+    if (checkedFormValidity){
+      setCheckedFormValidity(false)
+    }
+  }
+
+  function handleReviewTitleChange(event){
+    setReviewTitle(event.target.value);
+    setDisplaySuccess(false)
+    if (checkedFormValidity){
+      setCheckedFormValidity(false)
+    }
+  }
+
+  function handleReviewBodyChange(event){
+    setReviewBody(event.target.value);
+    setDisplaySuccess(false)
+    if (checkedFormValidity){
+      setCheckedFormValidity(false)
+    }
+  }
+
+  function handleRatingChange(event){
+    setMovieRating(parseInt(event.target.value)); 
+    setDisplaySuccess(false)
+    if (checkedFormValidity){
+      setCheckedFormValidity(false)
+    }
+  }
+
+  function handleSubmit(){
+    let valid = true
+
+    if (reviewTitle.trim().length){
+      setValidTitle(true)
+    }
+    else{
+      setValidTitle(false)
+      valid = false
+    }
+
+    if (reviewBody.trim().length){
+      setValidBody(true)
+    }
+    else{
+      setValidBody(false)
+      valid = false
+    }
+
+    if (ratings.indexOf(movieRating) !== -1){
+      setValidRating(true)
+    }
+    else{
+      setValidRating(false)
+      valid = false
+    }
+
+    if (valid){
+      const review = {
+        movie: selectedMovie,
+        title: reviewTitle,
+        body: reviewBody,
+        rating: movieRating
+      }
+      addReview(review)
+
+      setDisplaySuccess(true)
+
+      // reset
+      setMovieRating(0)
+      setReviewBody("")
+      setReviewTitle("")
+      setValidRating(false)
+      setValidBody(false)
+      setValidTitle(false)
+
+    }
+    else {
+      setCheckedFormValidity(true)
+    }
+    
+  }
+
+  return (
+    <Mui.Grid
+      container
+      direction="column"
+      justifyContent="center"
+      alignItems="left"
+      style={{
+        margin: "1rem",
+        boxSizing: "border-box",
+        maxWidth: "90vw",
+        gap: 20
+      }}
+    >
+      <MovieSelection 
+        item
+        selectedMovie={selectedMovie}
+        handleChange={handleSelectMovieChange}
+      >
+      </MovieSelection>
+
+      <ReviewTitle
+        item
+        reviewTitle={reviewTitle}
+        handleChange={handleReviewTitleChange}
+        invalid={checkedFormValidity && !validTitle}
+      >
+      </ReviewTitle>
+      
+      <ReviewBody
+        reviewBody={reviewBody}
+        handleChange={handleReviewBodyChange}
+        invalid={checkedFormValidity && !validBody}
+      >
+      </ReviewBody>
+
+      <ReviewRating
+        movieRating={movieRating}
+        handleChange={handleRatingChange}
+        invalid={checkedFormValidity && !validRating}
+      >
+
+      </ReviewRating>
+
+      <Mui.Button
+        onClick={handleSubmit}
+        variant="contained"
+        fullWidth={false}
+      >
+        Submit Review
+      </Mui.Button>
+      {
+        displaySuccess 
+        &&
+        <Mui.Typography
+          variant="p"
+          align="center"
+        >
+          Your review has been received
+        </Mui.Typography>
+      }
+    </Mui.Grid>
+  ) 
+}
+
+const MovieSelection = ({selectedMovie, handleChange}) => {
+
+  return (
+    <Mui.Grid
+      container
+      direction="column"
+    >
+      <Mui.FormLabel>Movie</Mui.FormLabel>
+      <Mui.Select 
+        labelId="label" 
+        id="selectMovie" 
+        value={selectedMovie} 
+        onChange={handleChange}
+      >
+        {
+          movies.map((movie) => {
+            return <Mui.MenuItem value={movie}>{movie}</Mui.MenuItem>
+          })
+        }
+      </Mui.Select>
+    </Mui.Grid>
+  )
+}
+
+const ReviewTitle = ({reviewTitle, handleChange, invalid}) => (
+  <Mui.Grid
+      container
+      direction="column"
+  >
+    <Mui.FormLabel>Review Title</Mui.FormLabel>
+    <Mui.TextField 
+        required
+        id="movieReviewTitle"
+        value={reviewTitle}
+        onChange={handleChange}
+        error={invalid}
+        helperText={invalid && "Please enter your review title"}
+      >
+
+    </Mui.TextField>
+  </Mui.Grid>
+)
+
+const ReviewBody = ({reviewBody, handleChange, invalid}) => {
+  return (
+    <Mui.Grid
+      container
+      direction="column"
+    >
+      <Mui.FormLabel>Review Body</Mui.FormLabel>
+      <Mui.TextField
+        multiline
+        id="movieReviewBody"
+        value={reviewBody}
+        onChange={handleChange}
+        minRows={3}
+        error={invalid}
+        helperText={invalid && "Please enter your review"}
+        inputProps={{ maxLength: 200 }}
+      >
+
+      </Mui.TextField>
+    </Mui.Grid>
+  )
+}
+
+const ReviewRating = ({movieRating, handleChange, invalid}) => {
+  return (
+    
+    <Mui.Grid
+      container
+      direction="column"
+    >
+    
+      <Mui.FormLabel>Rating</Mui.FormLabel>
+      <Mui.Grid
+        container
+        spacing={0}
+        direction="column"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Mui.FormControl
+          error={invalid}
+        >
+          <Mui.RadioGroup
+            row
+            onChange={handleChange}
+            value={movieRating}
+          >
+            {
+              ratings.map((rating) => {
+                return (
+                  <Mui.FormControlLabel 
+                    value={rating} 
+                    control={<Mui.Radio />} 
+                    label={rating}
+                    labelPlacement="top"
+                  />
+                )
+              })
+            }
+          </Mui.RadioGroup>
+          <Mui.FormHelperText>{invalid && "Please select the rating"}</Mui.FormHelperText>
+        </Mui.FormControl>
+      </Mui.Grid>
+    </Mui.Grid>
+    
+  )
+}
+
+const ReviewDisplayContainer = ({reviews}) => {
+  return (
+    <Mui.Grid
+      container
+      direction="column"
+      justifyContent="center"
+      alignItems="left"
+      style={{
+        margin: "1rem",
+        boxSizing: "border-box",
+        maxWidth: "40vw",
+        gap: 20,
+        padding: "0.5rem",
+        border: "2px solid black" 
+      }}
+    >
+      {
+        reviews.map((review) => {
+          return (
+            <ReviewDisplay review={review}>
+            </ReviewDisplay>
+          )
+        })
+      }
+    </Mui.Grid>
+  )
+}
+
+const ReviewDisplay = ({review}) => {
+  return (
+    <div style={{display: 'flex'}}>
+      <div style={{display: 'flex', flexDirection: 'column', marginRight: '0.5rem'}}>
+        <b>Movie:</b>
+        <b>Title: </b>
+        <b>Body: </b>
+        <b>Rating: </b>
+      </div>
+      <div style={{display: 'flex', flexDirection: 'column'}}>
+        <b>{review.movie}</b>
+        <b>{review.title}</b>
+        <b>{review.body}</b>
+        <b>{review.rating}.0/5.0</b>
+      </div>
+
+    </div>
+  )
+}
+const ratings = [1, 2, 3, 4, 5]
